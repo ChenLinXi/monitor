@@ -6,7 +6,7 @@ from socket import *
 
 class UdpClient(object):
 	UDPSock = socket(AF_INET,SOCK_DGRAM)
-	def __init__(self, server='10.100.188.172',port=41235,mtu=1024,source=None):
+	def __init__(self, server='XXX',port=XXX,mtu=1024,source=None):
 		self.server = server
 		self.port = int(port)
 		self.mtu = int(mtu)
