@@ -25,7 +25,7 @@ class UdpClient(object):
 	def send(self, send_data):
 		message = {}
 		message['version'] = '1.0'
-		message['short_message'] = 'tcbase.systeminfo'
+		message['short_message'] = 'xxxx'
 		message['host'] = self.source
 		message['timestamp'] = time.time()
 		message['full_message'] = json.dumps(send_data)
