@@ -62,6 +62,24 @@ def perform(net_list):
 	res = {'net_dev':None,'net_send':None,'net_recv':None,'disk_read':None,'disk_write':None}
 	net_info = net_list
 
+	NetPlugin = plugin_manager.getPlugins(plugin_list[3])
+	net_list = []
+	for part in NetPlugin[0].extract():
+		if part['name'] == 'bond0':
+			net_list.append(copy.copy(part)) #deep copy
+			break
+		else:
+			pass
+
+	if len(net_list) != 0 and len(net_info) != 0:
+		res['net_dev'] = net_list[0]['name']
+		res['net_send'] = (net_list[0]['out'] - net_info[0]['out'])*4 #bytes to bit *8/4
+		res['net_recv'] = (net_list[0]['in'] - net_info[0]['in'])*4
+	else:
+		res['net_dev'] = 'bond0 device cannot find'
+		res['net_send'] = ''
+		res['net_recv'] = ''
+
 	CpuPlugin = plugin_manager.getPlugins(plugin_list[0])
 	cpu_ret = CpuPlugin[0].extract()
 
@@ -97,22 +115,6 @@ def perform(net_list):
 	res['disk_read'] = long(disk_rw[2])
 	res['disk_write'] = long(disk_rw[3])
 
-	NetPlugin = plugin_manager.getPlugins(plugin_list[3])
-	net_list = []
-	for part in NetPlugin[0].extract():
-		if part['name'] == 'bond0':
-			net_list.append(copy.copy(part)) #deep copy
-			break
-		else:
-			pass
-	if len(net_list) != 0 and len(net_info) != 0:
-		res['net_dev'] = net_list[0]['name']
-		res['net_send'] = (net_list[0]['out'] - net_info[0]['out'])*2 #bytes to bit *8/4
-		res['net_recv'] = (net_list[0]['in'] - net_info[0]['in'])*2
-	else:
-		res['net_dev'] = 'bond0 device cannot find'
-		res['net_send'] = ''
-		res['net_recv'] = ''
 
 	MemPlugins = plugin_manager.getPlugins(plugin_list[4])
 	mem_ret = MemPlugins[0].extract()
