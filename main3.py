@@ -1,7 +1,7 @@
 #coding:utf-8
 
 from pluginManager import DirectoryPluginManager
-import os,json,copy,time,math,struct,glob,re,psutil
+import os,json,copy,time,math,struct,glob,re,psutil,commands
 from socket import *
 
 class UdpClient(object):
@@ -49,36 +49,24 @@ def prepare():
 			break
 		else:
 			pass
-	time.sleep(2)
+	time.sleep(8)
 	return net_list
 
+def getCpuLoad():
+	(status, result) = commands.getstatusoutput('uptime')
+	if status == 0 :
+		return float(result.strip(' ').split(',')[4])
+	else:
+		return 0
 
 def perform(net_list):
-
 	plugin_manager = DirectoryPluginManager()
 	plugin_manager.loadPlugins()
 
+	net_info = net_list
 	plugin_list = ["CpuInfo","DiskInfo","UtilsInfo","NetInfo","MemInfo"]
 	res = {'net_dev':None,'net_send':None,'net_recv':None,'disk_read':None,'disk_write':None}
-	net_info = net_list
 
-	NetPlugin = plugin_manager.getPlugins(plugin_list[3])
-	net_list = []
-	for part in NetPlugin[0].extract():
-		if part['name'] == 'bond0':
-			net_list.append(copy.copy(part)) #deep copy
-			break
-		else:
-			pass
-
-	if len(net_list) != 0 and len(net_info) != 0:
-		res['net_dev'] = net_list[0]['name']
-		res['net_send'] = (net_list[0]['out'] - net_info[0]['out'])*4 #bytes to bit *8/4
-		res['net_recv'] = (net_list[0]['in'] - net_info[0]['in'])*4
-	else:
-		res['net_dev'] = 'bond0 device cannot find'
-		res['net_send'] = ''
-		res['net_recv'] = ''
 
 	CpuPlugin = plugin_manager.getPlugins(plugin_list[0])
 	cpu_ret = CpuPlugin[0].extract()
@@ -90,17 +78,16 @@ def perform(net_list):
 	res['wai'] = cpu_ret['wai']
 	res['hiq'] = cpu_ret['hiq']
 	res['siq'] = cpu_ret['siq']
+	res['load'] = getCpuLoad()
 
 	DiskPlugin = plugin_manager.getPlugins(plugin_list[1])
-	disk_ret = {}
-	for part in DiskPlugin[0].disk_partitions():
-		if part.mountpoint == '/':
-			usage = DiskPlugin[0].disk_usage(part.mountpoint)
-			disk_ret['diskTotal'] = long(usage.total)
-			disk_ret['diskFree'] = long(usage.free)
-			disk_ret['diskUsed'] = long(usage.used)
-		else:
-			continue
+	disk_ret = DiskPlugin[0].extract()
+	res['diskFree'] = long(disk_ret['free'] * 1024)
+	res['diskUsed'] = long(disk_ret['used'] * 1024)
+	res['diskTotal'] = long(disk_ret['total'] * 1024)
+	res['disk_read'] = long(disk_ret['read'] * 1024)
+	res['disk_write'] = long(disk_ret['write'] * 1024)
+
 
 	UtilsPlugin = plugin_manager.getPlugins(plugin_list[2])
 
@@ -108,12 +95,22 @@ def perform(net_list):
 	res['Date'] = UtilsPlugin[0].getSysTime()
 	res['occupiedPort'] = UtilsPlugin[0].getPorts()
 
-	disk_rw = UtilsPlugin[0].diskRW()
-	res['diskFree'] = disk_ret['diskFree']
-	res['diskUsed'] = disk_ret['diskUsed']
-	res['diskTotal'] = disk_ret['diskTotal']
-	res['disk_read'] = long(disk_rw[2])
-	res['disk_write'] = long(disk_rw[3])
+	net_list = []
+	NetPlugin = plugin_manager.getPlugins(plugin_list[3])
+	for part in NetPlugin[0].extract():
+		if part['name'] == 'bond0':
+			net_list.append(copy.copy(part)) #deep copy
+			break
+		else:
+			pass
+	if len(net_list) != 0 and len(net_info) != 0:
+		res['net_dev'] = net_list[0]['name']
+		res['net_send'] = (net_list[0]['out'] - net_info[0]['out']) #bytes to bit *8/8
+		res['net_recv'] = (net_list[0]['in'] - net_info[0]['in'])
+	else:
+		res['net_dev'] = 'bond0 device cannot find'
+		res['net_send'] = ''
+		res['net_recv'] = ''
 
 
 	MemPlugins = plugin_manager.getPlugins(plugin_list[4])
